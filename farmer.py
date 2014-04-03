@@ -1,5 +1,5 @@
 import urllib
-import HTMLParser
+from HTMLParser import HTMLParser
 import tornado.httpserver
 import tornado.ioloop
 import tornado.options
@@ -10,11 +10,29 @@ define("port", default=80, help="run on the given port", type=int)
 
 class PageParser(HTMLParser):
 	"""parse a page"""
+	def __init__(self):
+		self.content=[]
+		self.urlMap={}
+		self.atag=0
+		self.tmpUrl=''
+		self.tmpContent=''
+		HTMLParser.__init__(self)
 	def handle_starttag(self,tag,attrs):
-          if tag =='a':
-              for name,value in attrs:
-                  if name == 'href' and value[0:6] == 'thread':
-                      print attrs
+		if tag == 'a':
+			self.atag = 1
+			for name,value in attrs:
+				if name == 'href':
+					self.tmpUrl = value
+	def handle_endtag(self, tag):
+		if tag == 'a':
+			self.atag = 0
+        	self.content.append(self.tmpContent)
+        	self.urlMap[self.tmpContent] = self.tmpUrl
+	def handle_data(self, data):
+		if self.atag:
+			self.tmpContent = data 
+	def getUrlMap(self):
+		return self.urlMap
 
 
 class UrlCreator(object):
@@ -29,12 +47,10 @@ class UrlPaser(object):
 			#content = urllib.urlretrieve(url, "/tmp/"+url.split('/')[-1])
 			pp = PageParser()
       		pp.feed(urllib.urlopen(url).read())
-            pp.handle_starttag()
-            pp.close()
+      		print pp.getUrlMap()
+      		pp.close()
 
 		
-
-
 class SupriseFinder(object):
 	"""find interesting link"""
 	def __init__(self, keyword, time, page):
